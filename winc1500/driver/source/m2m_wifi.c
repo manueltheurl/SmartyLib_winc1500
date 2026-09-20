@@ -43,6 +43,7 @@
 #include "driver/include/m2m_wifi.h"
 #include "driver/source/m2m_hif.h"
 #include "driver/source/nmasic.h"
+#include "config/conf_winc.h"
 
 static volatile uint8 gu8ChNum;
 static volatile uint8 gu8scanInProgress = 0;
@@ -478,11 +479,11 @@ sint8 m2m_wifi_init(tstrWifiInitParam * param)
 
 	ret = nm_get_firmware_full_info(&strtmp);
 
-	printf("Firmware ver   : %u.%u.%u Svnrev %u\n", strtmp.u8FirmwareMajor, strtmp.u8FirmwareMinor, strtmp.u8FirmwarePatch,strtmp.u16FirmwareSvnNum);
-	printf("Firmware Build %s Time %s\n",strtmp.BuildDate,strtmp.BuildTime);
-	printf("Firmware Min driver ver : %u.%u.%u\n", strtmp.u8DriverMajor, strtmp.u8DriverMinor, strtmp.u8DriverPatch);
-	printf("Driver ver: %u.%u.%u\n", M2M_RELEASE_VERSION_MAJOR_NO, M2M_RELEASE_VERSION_MINOR_NO, M2M_RELEASE_VERSION_PATCH_NO);
-	printf("Driver built at %s\t%s\n",__DATE__,__TIME__);
+	WIFI_LOG_I("Firmware ver   : %u.%u.%u Svnrev %u", strtmp.u8FirmwareMajor, strtmp.u8FirmwareMinor, strtmp.u8FirmwarePatch,strtmp.u16FirmwareSvnNum);
+	WIFI_LOG_I("Firmware Build %s Time %s", strtmp.BuildDate, strtmp.BuildTime);
+	WIFI_LOG_I("Firmware Min driver ver : %u.%u.%u", strtmp.u8DriverMajor, strtmp.u8DriverMinor, strtmp.u8DriverPatch);
+	WIFI_LOG_I("Driver ver: %u.%u.%u", M2M_RELEASE_VERSION_MAJOR_NO, M2M_RELEASE_VERSION_MINOR_NO, M2M_RELEASE_VERSION_PATCH_NO);
+	WIFI_LOG_I("Driver built at %s %s", __DATE__, __TIME__);
 	if(M2M_ERR_FW_VER_MISMATCH == ret)
 	{
 		M2M_ERR("Mismatch Firmware Version\n");

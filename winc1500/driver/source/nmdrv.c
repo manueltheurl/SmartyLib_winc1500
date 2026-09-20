@@ -319,7 +319,7 @@ sint8 nm_drv_init(void * arg)
 		goto ERR2;
 	}
 #endif
-	printf("Chip ID %lx\n", nmi_get_chipid());
+	WIFI_LOG_I("Chip ID %lx", nmi_get_chipid());
 #ifdef CONF_WINC_USE_SPI
 	/* Must do this after global reset to set SPI data packet size. */
 	nm_spi_init();
