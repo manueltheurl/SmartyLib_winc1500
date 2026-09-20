@@ -43,18 +43,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>     /* Included for uint_t */
-
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_spi.h"
 #include "bsp/include/nm_bsp.h"
 #include "common/include/nm_common.h"
 #include "bus_wrapper/include/nm_bus_wrapper.h"
 #include "conf_winc.h"
+#include "stm32u5xx_hal.h"
+#include "LibIncludes/LibIncludes.h"
 
 #define NM_BUS_MAX_TRX_SZ	256
-
-/* Declare STM32 SPIx communication handler variable to winc1500 */
-SPI_HandleTypeDef hspiWifi;
 
 /* spi_rw variables */
 static uint8 spiDummyBuf[300] = {0};
@@ -87,68 +83,6 @@ static void spi_select_slave(const uint8_t select)
 *	@brief	transmit and/or receive data buffer via spi
 *	@return	status
 */
-
-#if 0
-
-//struct spi_module master;
-//struct spi_slave_inst slave_inst;
-
-static sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
-{
-	uint8 u8Dummy = 0;
-	uint8 u8SkipMosi = 0, u8SkipMiso = 0;
-	uint8_t txd_data = 0;
-	uint8_t rxd_data = 0;
-
-	if (!pu8Mosi) {
-		pu8Mosi = &u8Dummy;
-		u8SkipMosi = 1;
-	}
-	else if(!pu8Miso) {
-		pu8Miso = &u8Dummy;
-		u8SkipMiso = 1;
-	}
-	else {
-		return M2M_ERR_BUS_FAIL;
-	}
-
-	spi_select_slave(true);
-
-
-	while (u16Sz) {
-		txd_data = *pu8Mosi;
-		//printf("\nsend %d",txd_data);
-		HAL_SPI_TransmitReceive(&hspiWifi,&txd_data,&rxd_data,1,1000);
-		//HAL_SPI_Transmit(&hspi1,&txd_data,1,1000);
-		//HAL_SPI_Receive(&hspi1,&rxd_data,1,1000);
-//		while (!spi_is_ready_to_write(&master))
-//			;
-//		while(spi_write(&master, txd_data) != STATUS_OK)
-//			;
-
-//		/* Read SPI master data register. */
-//		while (!spi_is_ready_to_read(&master))
-//			;
-//		while (spi_read(&master, &rxd_data) != STATUS_OK)
-//			;
-		*pu8Miso = rxd_data;
-//printf("\nrecv %d",rxd_data);
-		u16Sz--;
-		if (!u8SkipMiso)
-			pu8Miso++;
-		if (!u8SkipMosi)
-			pu8Mosi++;
-	}
-
-//	while (!spi_is_write_complete(&master))
-//		;
-
-spi_select_slave(false);
-
-	return M2M_SUCCESS;
-}
-#else
-
 static sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
 {
    HAL_StatusTypeDef status;
@@ -160,16 +94,16 @@ static sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
     /* Transmit/Recieve */
     if (pu8Mosi == NULL)
 	{
-		status = HAL_SPI_TransmitReceive(&hspiWifi,spiDummyBuf,pu8Miso,u16Sz,1000);
+		status = HAL_SPI_TransmitReceive(&WIFI_SPI_HANDLE,spiDummyBuf,pu8Miso,u16Sz,1000);
     }
     else if(pu8Miso == NULL)
     {
-        status = HAL_SPI_TransmitReceive(&hspiWifi,pu8Mosi,spiDummyBuf,u16Sz,1000);
+        status = HAL_SPI_TransmitReceive(&WIFI_SPI_HANDLE,pu8Mosi,spiDummyBuf,u16Sz,1000);
         memset(spiDummyBuf,0, u16Sz);
     }
     else
     {     
-        status = HAL_SPI_TransmitReceive(&hspiWifi,pu8Mosi,pu8Miso,u16Sz,1000);
+        status = HAL_SPI_TransmitReceive(&WIFI_SPI_HANDLE,pu8Mosi,pu8Miso,u16Sz,1000);
     } 
     
     /* Handle Transmit/Recieve error */
@@ -183,36 +117,11 @@ static sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
 
 	return M2M_SUCCESS;
 }
-#endif
 #endif //CONF_WINC_USE_SPI
 
 void nm_bus_wifi_spi_init(SPI_HandleTypeDef *hspi)
 {
-    GPIO_InitTypeDef  GPIO_InitStruct;
-
-    /* Peripheral clock enable */
-    SPI_WIFI_CLK_ENABLE();
-
-    /* Configure GPIO pin : PA4 - we are using ST GPIO definitions for winc1500 */
-    GPIO_InitStruct.Pin   = SPI_WIFI_CS_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = 0;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(SPI_WIFI_CS_GPIO_PORT,SPI_WIFI_CS_PIN,GPIO_PIN_SET);
-
-    /**SPIx GPIO Configuration
-    PB3     ------> SPI_WIFI_SCK
-    PB4     ------> SPI_WIFI_MISO
-    PB5     ------> SPI_WIFI_MOSI
-    */
-    GPIO_InitStruct.Pin = SPI_WIFI_SCK_PIN|SPI_WIFI_MISO_PIN|SPI_WIFI_MOSI_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-   GPIO_InitStruct.Alternate = SPI3_WIFI_AF;
-    HAL_GPIO_Init(SPI_WIFI_MOSI_GPIO_PORT, &GPIO_InitStruct);
+	// will be done in main.c, cube generated stuff
 }
 
 
@@ -224,29 +133,8 @@ void nm_bus_wifi_spi_init(SPI_HandleTypeDef *hspi)
 sint8 nm_bus_init(void *pvinit)
 {
 	sint8 result = M2M_SUCCESS;
-
-	 /* WiFi SPI init function - called from nm_bus_init() */
-
-	hspiWifi.Instance			   = SPI_WIFI;
-	hspiWifi.Init.Mode			   = SPI_MODE_MASTER;
-	hspiWifi.Init.Direction 	   = SPI_DIRECTION_2LINES;
-	hspiWifi.Init.DataSize		   = SPI_DATASIZE_8BIT;
-	hspiWifi.Init.CLKPolarity	   = SPI_POLARITY_LOW;
-	hspiWifi.Init.CLKPhase		   = SPI_PHASE_1EDGE;
-	hspiWifi.Init.NSS			   = SPI_NSS_SOFT;
-	hspiWifi.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
-	hspiWifi.Init.FirstBit		   = SPI_FIRSTBIT_MSB;
-	hspiWifi.Init.TIMode		   = SPI_TIMODE_DISABLE;
-	hspiWifi.Init.CRCCalculation   = SPI_CRCCALCULATION_DISABLE;
-	hspiWifi.Init.CRCPolynomial    = 10;
-//	  hspiWifi.Init.CRCLength		 = SPI_CRC_LENGTH_DATASIZE;
-//	  hspiWifi.Init.NSSPMode		 = SPI_NSS_PULSE_DISABLE;
-	if (HAL_SPI_Init(&hspiWifi) != HAL_OK)
-	{
-		M2M_ERR("SPI bus Initialization error\r\n");
-	}
-
-	HAL_SPI_MspInit(&hspiWifi);
+	// init is called by main.c in cube generated code!
+	// HAL_SPI_MspInit(&WIFI_SPI_HANDLE);
 	return result;
 }
 

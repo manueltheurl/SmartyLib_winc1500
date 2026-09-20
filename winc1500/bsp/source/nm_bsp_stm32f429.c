@@ -42,10 +42,8 @@
 
 #include "bsp/include/nm_bsp.h"
 #include "common/include/nm_common.h"
-#include "stm32f4xx_hal.h"
-//#include "cmsis_os.h"
 #include "conf_winc.h"
-
+#include "stm32u5xx_hal.h"
 
 
 /*
@@ -55,33 +53,15 @@
 static void init_chip_pins(void)
 {
     /* Initialize WiFi GPIO pins */
-    GPIO_InitTypeDef GPIO_InitStruct;
-
-    /* Configure GPIO pins : PA1 PA2 PA0 - we are using ST GPIO definitions for winc1500 */
-    GPIO_InitStruct.Pin   = CONF_WINC_PIN_RESET;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;    // GPIO_PULLDOWN;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    GPIO_InitStruct.Alternate = 0;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin   = CONF_WINC_PIN_CHIP_ENABLE;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin   = CONF_WINC_PIN_WAKE;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin   = CONF_WINC_PIN_POWER_ENABLE;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin   = CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE;
-    HAL_GPIO_Init(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE, &GPIO_InitStruct);
+	// gpios will be initialized in main.c with cube generated code
     
     /* Set INIT value */
-    HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_POWER_ENABLE,GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE,CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE,GPIO_PIN_SET);
-    HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_CHIP_ENABLE,GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOC,CONF_WINC_PIN_RESET,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_POWER_ENABLE,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE,CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE,GPIO_PIN_SET);
+    HAL_GPIO_WritePin(WIFI_ENABLE_PORT,WIFI_ENABLE_PIN,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(WIFI_RESET_PORT,WIFI_RESET_PIN,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(WIFI_SPI_CS_PORT,WIFI_SPI_CS_PIN,GPIO_PIN_SET);  // not chip selected
+
 
 }
 
@@ -110,12 +90,13 @@ sint8 nm_bsp_deinit(void)
 {
     /* De-Initialize WiFi GPIO pins */
      /* Reset the chip enable and chip reset pins */
-    HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_POWER_ENABLE,GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE,CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE,GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_POWER_ENABLE,GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE,CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE,GPIO_PIN_SET);
     //HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_CHIP_ENABLE,GPIO_PIN_RESET);
 	
-    HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_CHIP_ENABLE,GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOC,CONF_WINC_PIN_RESET,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(WIFI_ENABLE_PORT,WIFI_ENABLE_PIN,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(WIFI_RESET_PORT,WIFI_RESET_PIN,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(WIFI_SPI_CS_PORT,WIFI_SPI_CS_PIN,GPIO_PIN_SET);  // not chip selected
     nm_bsp_sleep(10);
 
 	return M2M_SUCCESS;
@@ -132,20 +113,21 @@ void nm_bsp_reset(void)
     /* -------------------------------- */
 
     /* Power enable (3.3V) - 3V3_DC2DC_EN output */
-    HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_POWER_ENABLE,GPIO_PIN_SET);
-    HAL_Delay(100);
+    //HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_POWER_ENABLE,GPIO_PIN_SET);
+    //HAL_Delay(100);
 
     /* Level Shifter Translate enable - LEVEL_TRNSLT_EN output */
-    HAL_GPIO_WritePin(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE,CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE,GPIO_PIN_RESET);
-    HAL_Delay(100);
+    //HAL_GPIO_WritePin(CONF_WINC_PORT_LEVEL_SHIFTER_ENABLE,CONF_WINC_PIN_LEVEL_SHIFTER_ENABLE,GPIO_PIN_RESET);
+    //HAL_Delay(100);
 
     /* Set CHIP enable */
    // HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_CHIP_ENABLE,GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOA,CONF_WINC_PIN_CHIP_ENABLE,GPIO_PIN_SET);
+	HAL_GPIO_WritePin(WIFI_ENABLE_PORT,WIFI_ENABLE_PIN,GPIO_PIN_SET);
     HAL_Delay(100);
 
     /* Set RSTN 1.8V */
-    HAL_GPIO_WritePin(GPIOC,CONF_WINC_PIN_RESET,GPIO_PIN_SET);
+    HAL_GPIO_WritePin(WIFI_RESET_PORT,WIFI_RESET_PIN,GPIO_PIN_SET);
+
     HAL_Delay(100);
 
 }
@@ -170,39 +152,7 @@ void nm_bsp_sleep(uint32 u32TimeMsec)
  */
 void nm_bsp_register_isr(tpfNmBspIsr pfIsr)
 {
-    GPIO_InitTypeDef GPIO_InitStruct;
-
-    /* EXTI2 init ISR function - called from nm_bsp_register_isr() */
-
-     __GPIOC_CLK_ENABLE();
-	 //__GPIOA_CLK_ENABLE();
-
-    /*Configure GPIO pin : PA2 */
-    GPIO_InitStruct.Pin   = CONF_WINC_SPI_INT_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_IT_FALLING;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    /* EXTI 2 (PA2) interrupt init*/
-    HAL_NVIC_SetPriority(CONF_WINC_EXTI_IRQN, 0x00, 0);
-    HAL_NVIC_EnableIRQ(CONF_WINC_EXTI_IRQN);
-
-#if 0
-	GPIO_InitTypeDef   GPIO_InitStructure;
-	
-	/* Enable GPIOC clock */
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	
-	/* Configure PC.13 pin as input floating */
-	GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-	GPIO_InitStructure.Pin = GPIO_PIN_13;
-	HAL_GPIO_Init(GPIOC, &GPIO_InitStructure);
-	
-	/* Enable and set EXTI line 15_10 Interrupt to the lowest priority */
-	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-#endif
+	// interrupt pin will be registered in main.c, with cube generated code
 
 }
 
