@@ -106,14 +106,19 @@ static sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
         status = HAL_SPI_TransmitReceive(&WIFI_SPI_HANDLE,pu8Mosi,pu8Miso,u16Sz,1000);
     } 
     
-    /* Handle Transmit/Recieve error */
+    /* Handle Transmit/Recieve error. Deselect before returning even on failure - leaving
+     * WIFI_nCS asserted here left it low forever (nothing else ever raises it), so every
+     * later SPI2 transaction - including the ExtFlash driver's, which shares this bus, see
+     * ExtFlash.h "Bus sharing" - was also clocked into the WINC1500, corrupting both. Local
+     * patch to vendored code; see TODO.md "SPI2 sharing between ExtFlash and WiFi..."
+     * (2026-08-31). */
+    spi_select_slave(false);
+
     if (status != HAL_OK)
     {
         M2M_ERR("%s: HAL_SPI_TransmitReceive failed. error (%d)\n",__FUNCTION__,status);
         return status;
     }
-    
-  	spi_select_slave(false);
 
 	return M2M_SUCCESS;
 }
