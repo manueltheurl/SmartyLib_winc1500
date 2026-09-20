@@ -96,6 +96,8 @@
 #define DATA_PKT_SZ_8K			(8 * 1024)
 #define DATA_PKT_SZ				DATA_PKT_SZ_8K
 
+#define DISABLE_CALL_TO_spi_init_pkt_sz
+
 static uint8 	gu8Crc_off	=   0;
 
 static sint8 nmi_spi_read(uint8* b, uint16 sz)
@@ -1169,6 +1171,7 @@ _FAIL_:
 	Bus interfaces
 
 ********************************************/
+#ifndef DISABLE_CALL_TO_spi_init_pkt_sz
 
 static void spi_init_pkt_sz(void)
 {
@@ -1189,6 +1192,7 @@ static void spi_init_pkt_sz(void)
 	}
 	nm_spi_write_reg(SPI_BASE+0x24, val32);
 }
+#endif
 
 sint8 nm_spi_reset(void)
 {
@@ -1250,7 +1254,10 @@ sint8 nm_spi_init(void)
 	}
 
 	M2M_DBG("[nmi spi]: chipid (%08x)\n", (unsigned int)chipid);
-	//spi_init_pkt_sz();
+
+#ifndef DISABLE_CALL_TO_spi_init_pkt_sz
+	spi_init_pkt_sz();
+#endif
 
 
 	return M2M_SUCCESS;
