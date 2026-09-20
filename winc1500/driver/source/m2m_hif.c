@@ -39,7 +39,6 @@
  *
  */
 
-#include "stm32f4xx_hal.h"
 //#include "cmsis_os.h"
 #include "common/include/nm_common.h"
 #include "driver/source/nmbus.h"
